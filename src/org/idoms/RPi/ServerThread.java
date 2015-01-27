@@ -15,6 +15,8 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
+import org.idoms.RPi.exceptions.SensorException;
+import org.idoms.RPi.sensors.DS18b20;
 import sun.misc.BASE64Decoder;
 
 import javax.crypto.Cipher;
@@ -59,11 +61,11 @@ public class ServerThread implements Runnable {
     public void run() {
         // Makes it easier
         if (debug) sleepTime = 5;
+        GpioInterface gpio = GpioInterface.getInstance();
 
         try {
             while (keepRunning) {
                 Calendar calendar = Calendar.getInstance();
-                GpioInterface gpio = GpioInterface.getInstance();
                 try {
                     gpio.switchOn(GpioInterface.STATUS_PIN);
                     // Sent to server
@@ -111,9 +113,9 @@ public class ServerThread implements Runnable {
                         if (action.equalsIgnoreCase("setLow") || action.equalsIgnoreCase("setHigh")) {
                             Pin pin = getPinFromNumber(node.get("pin").asInt());
 
-                            if(!gpio.usedControlPins.contains(pin)){
+                            if (!gpio.usedControlPins.contains(pin)) {
                                 gpio.usedControlPins.add(pin);
-                                if(debug) System.out.println("Logging pin " + pin + " as used");
+                                if (debug) System.out.println("Logging pin " + pin + " as used");
                             }
 
                             if (action.equalsIgnoreCase("setHigh")) {
@@ -129,11 +131,9 @@ public class ServerThread implements Runnable {
                     }
 
                     gpio.switchOff(GpioInterface.STATUS_PIN);
-                } catch (Exception ex) {
-                    System.out.println("Problem processing in/after connection with " + address.getHostAddress() + " because " + ex.getMessage());
-                    ex.printStackTrace(System.out);
-
+                } catch (IOException ioe) {
                     gpio.turnAllActivePinsOff();
+
                     // Try to get an IP request again. (maybe this should be selected more intelligent, could have all kinds of reasons)
                     FindUDPServer udpFinder = new FindUDPServer();
                     address = udpFinder.searchForServer(debug);
@@ -142,15 +142,24 @@ public class ServerThread implements Runnable {
                         System.out.println("Problem finding the server with unrecoverable error, please look at the log!");
                         System.exit(-1);
                     }
+                } catch (SensorException ex){
+                    throw (ex);
+                } catch (Exception ex) {
+                    System.out.println("Problem processing in/after connection with " + address.getHostAddress() + ": " + ex.getMessage());
+                    ex.printStackTrace(System.out);
+                    gpio.flash(GpioInterface.STATUS_PIN, 250);
                 } finally {
                     gpio.releasePin(GpioInterface.STATUS_PIN);
                     calendar.add(Calendar.SECOND, sleepTime);
                     long waitTime = calendar.getTimeInMillis() - new Date().getTime();
                     if (waitTime > 0) Thread.sleep(waitTime);
+                    gpio.flash(GpioInterface.STATUS_PIN, 0);
                 }
             }
         } catch (Exception e) {
-            System.out.println("The server sync thread has crashed... This is not good: " + e.getLocalizedMessage());
+            gpio.turnAllActivePinsOff();
+            gpio.flash(GpioInterface.STATUS_PIN, 250);
+            System.out.println("The server sync thread has closed/crashed... This is not good: " + e.getLocalizedMessage());
         }
     }
 
