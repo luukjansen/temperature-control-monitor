@@ -4,6 +4,8 @@ import java.net.*;
 
 public class Main {
 
+    // Flash on communication, can be disabled if annoying (but will flash on error)
+    private static boolean statusLed = true;
     private static boolean debug = true;
 
     public static void main(String[] args) {
@@ -25,6 +27,13 @@ public class Main {
                 if (debugProp.equalsIgnoreCase("1")) {
                     System.out.println("(In debug mode)");
                     debug = true;
+                }
+            }
+
+            String statusLedProp = System.getProperty("statusLed");
+            if (statusLedProp != null) {
+                if (statusLedProp.equalsIgnoreCase("0")) {
+                    statusLed = false;
                 }
             }
 
