@@ -13,7 +13,7 @@ public class FindUDPServer {
     public InetAddress searchForServer(boolean debug) throws Exception {
         this.debug = debug;
 
-        final GpioInterface gpio = GpioInterface.getInstance();
+        final GpioInterface gpio = GpioInterface.getInstance(debug);
         gpio.switchOn(GpioInterface.STATUS_PIN);
 
         System.out.println("Trying to discover the server...");

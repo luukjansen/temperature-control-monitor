@@ -17,7 +17,7 @@ class ShutdownThread extends Thread {
     public void run() {
         System.out.println("[Shutdown thread] Shutting down");
 
-        GpioInterface gpio = GpioInterface.getInstance();
+        GpioInterface gpio = GpioInterface.getInstance(true);
         gpio.turnAllActivePinsOff();
         gpio.switchOff(GpioInterface.STATUS_PIN);
         gpio.releasePin(GpioInterface.STATUS_PIN);
