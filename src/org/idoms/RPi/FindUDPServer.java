@@ -8,12 +8,9 @@ import java.util.Enumeration;
  */
 public class FindUDPServer {
 
-    private boolean debug = false;
+    public InetAddress searchForServer() throws Exception {
 
-    public InetAddress searchForServer(boolean debug) throws Exception {
-        this.debug = debug;
-
-        final GpioInterface gpio = GpioInterface.getInstance(debug);
+        final GpioInterface gpio = GpioInterface.getInstance();
         gpio.switchOn(GpioInterface.STATUS_PIN);
 
         System.out.println("Trying to discover the server...");
@@ -22,6 +19,7 @@ public class FindUDPServer {
         //pin.flash(250, 2000);
 
         InetAddress address = null;
+        gpio.flash(GpioInterface.STATUS_PIN, 0);
         gpio.flash(GpioInterface.STATUS_PIN, 250);
         while (address == null) {
             try {
@@ -59,7 +57,7 @@ public class FindUDPServer {
             try {
                 DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, InetAddress.getByName("255.255.255.255"), 8888);
                 c.send(sendPacket);
-                if(debug) System.out.println(getClass().getName() + ">>> Request packet sent to: 255.255.255.255 (DEFAULT)");
+                if(Main.debug) System.out.println(getClass().getName() + ">>> Request packet sent to: 255.255.255.255 (DEFAULT)");
             } catch (Exception e) {
             }
 
@@ -85,11 +83,11 @@ public class FindUDPServer {
                     } catch (Exception e) {
                     }
 
-                    if(debug)System.out.println(getClass().getName() + ">>> Request packet sent to: " + broadcast.getHostAddress() + "; Interface: " + networkInterface.getDisplayName());
+                    if(Main.debug)System.out.println(getClass().getName() + ">>> Request packet sent to: " + broadcast.getHostAddress() + "; Interface: " + networkInterface.getDisplayName());
                 }
             }
 
-            if(debug)System.out.println(getClass().getName() + ">>> Done looping over all network interfaces. Now waiting for a reply!");
+            if(Main.debug)System.out.println(getClass().getName() + ">>> Done looping over all network interfaces. Now waiting for a reply!");
 
             //Wait for a response
             byte[] recvBuf = new byte[15000];

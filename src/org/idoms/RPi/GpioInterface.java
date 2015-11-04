@@ -3,10 +3,12 @@ package org.idoms.RPi;
 import com.pi4j.io.gpio.*;
 import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
+import com.pi4j.system.SystemInfo;
 import com.sun.corba.se.spi.activation.Server;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -20,20 +22,18 @@ public class GpioInterface {
     public List<Pin> usedControlPins = new ArrayList<Pin>();
     public List<GpioPinDigitalInput> registeredInputs = new ArrayList<GpioPinDigitalInput>();
 
-    private boolean debug = false;
-
     public static final Pin STATUS_PIN = RaspiPin.GPIO_00;
 
-    public static GpioInterface getInstance(boolean debug) {
+    public static GpioInterface getInstance() {
         if(instance == null) {
-           instance = new GpioInterface(debug);
+           instance = new GpioInterface();
         }
 
         return instance;
     }
 
-    private GpioInterface(boolean debug) {
-        this.debug = debug;
+    private GpioInterface() {
+
     }
 
     public void stop(){
@@ -49,7 +49,12 @@ public class GpioInterface {
             }
         }
 
-        if(outputPin == null)outputPin = gpio.provisionDigitalOutputPin(pin);
+        if(outputPin == null) {
+            outputPin = gpio.provisionDigitalOutputPin(pin);
+            if(Main.debug) System.out.println("Provisioning pin " + pin + " as it was not yet provisioned!");
+        } else {
+            if(Main.debug) System.out.println("Pin " + pin + "  was already provisioned!");
+        }
         return outputPin;
     }
 
@@ -78,7 +83,7 @@ public class GpioInterface {
     }
 
     public void turnAllActivePinsOff(){
-        GpioInterface gpio = GpioInterface.getInstance(debug);
+        GpioInterface gpio = GpioInterface.getInstance();
         // Set all pins to off
         for(Pin usedPin: gpio.usedControlPins){
             gpio.switchOff(usedPin);
@@ -98,14 +103,14 @@ public class GpioInterface {
 
     public void addButtonListener(Pin pin) {
         // provision gpio pin #02 as an input pin with its internal pull down resistor enabled
-        final GpioPinDigitalInput button = gpio.provisionDigitalInputPin(pin, PinPullResistance.PULL_DOWN);
+        final GpioPinDigitalInput button = gpio.provisionDigitalInputPin(pin, PinPullResistance.PULL_UP);
 
         // create and register gpio pin listener
         button.addListener(new GpioPinListenerDigital() {
             @Override
             public void handleGpioPinDigitalStateChangeEvent(GpioPinDigitalStateChangeEvent event) {
                 // display pin state on console
-                if(debug) System.out.println("GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
+                if(Main.debug) System.out.println("GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
 
                 // Sent to server.
                 try {
@@ -114,8 +119,12 @@ public class GpioInterface {
                         flash(STATUS_PIN, 250, 2000);
                         return;
                     }
-                    ServerConnection connection = new ServerConnection(Main.address, debug, true);
-                    connection.contactServer("port_" + event.getPin().getName(), event.getState().isHigh()?"1":"0");
+                    ServerConnection connection = new ServerConnection(Main.address);
+
+                    HashMap<String, Float> sensors = new HashMap<String, Float>();
+                    sensors.put("action_" + SystemInfo.getSerial() + "_" + event.getPin().getName(), event.getState().isHigh()?1f:0f);
+
+                    connection.contactServer(sensors);
                 } catch (Exception e){
                     System.out.println("Error trying to contact the server after event on input " + event.getPin() + " message: " + e.getLocalizedMessage());
                 }
@@ -124,7 +133,7 @@ public class GpioInterface {
         });
 
         registeredInputs.add(button);
-
+        if(Main.debug) System.out.println("Button registered for pin " + pin);
     }
 
 }

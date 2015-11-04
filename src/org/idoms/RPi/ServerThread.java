@@ -41,17 +41,9 @@ public class ServerThread implements Runnable {
 
     private InetAddress address;
     private boolean keepRunning = true;
-    private boolean debug = false;
-    private boolean statusLed = true;
 
     public ServerThread(InetAddress address) {
         this.address = address;
-    }
-
-    public ServerThread(InetAddress address, boolean debug, boolean statusLed) {
-        this.address = address;
-        this.statusLed = statusLed;
-        this.debug = debug;
     }
 
     public void stopThread() {
@@ -62,9 +54,9 @@ public class ServerThread implements Runnable {
     @Override
     public void run() {
         // Makes it easier
-        if (debug) sleepTime = 5;
-        GpioInterface gpio = GpioInterface.getInstance(debug);
-        ServerConnection serverConnection = new ServerConnection(address, debug, statusLed);
+        if (Main.debug) sleepTime = 10;
+        GpioInterface gpio = GpioInterface.getInstance();
+        ServerConnection serverConnection = new ServerConnection(address);
 
         try {
             while (keepRunning) {
