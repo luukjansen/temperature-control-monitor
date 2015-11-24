@@ -51,9 +51,21 @@ public class GpioInterface {
 
         if(outputPin == null) {
             outputPin = gpio.provisionDigitalOutputPin(pin);
-            if(Main.debug) System.out.println("Provisioning pin " + pin + " as it was not yet provisioned!");
+            if(Main.debug) {
+                System.out.println("Provisioning pin " + pin + " as it was not yet provisioned!");
+                //Exception e = new Exception("Happened at.");
+                //e.printStackTrace(System.out);
+            }
         } else {
-            if(Main.debug) System.out.println("Pin " + pin + "  was already provisioned!");
+            if(!outputPin.isMode(PinMode.DIGITAL_OUTPUT)){
+                outputPin.setMode(PinMode.DIGITAL_OUTPUT);
+            } else {
+                if (Main.debug) {
+                    System.out.println("Pin " + pin + "  was already provisioned!");
+                    //Exception e = new Exception("Happened at.");
+                    //e.printStackTrace(System.out);
+                }
+            }
         }
         return outputPin;
     }

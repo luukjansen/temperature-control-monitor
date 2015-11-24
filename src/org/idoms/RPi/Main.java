@@ -72,7 +72,7 @@ public class Main {
                 if (displayProp.equalsIgnoreCase("1")) {
                     try {
                         Runtime rt = Runtime.getRuntime();
-                        String[] initCmd = {"/bin/sh", "-c", "echo 252 > /sys/class/gpio/export"};
+                        String[] initCmd = {"/bin/sh", "-c", "echo 508 > /sys/class/gpio/export"};
                         Process pr = rt.exec(initCmd);
 
                         BufferedReader input = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
@@ -84,7 +84,7 @@ public class Main {
                         pr.waitFor();
                         if (debug) System.out.println("Tried to init display: " + pr.exitValue());
 
-                        String[] directionCmd = {"sh", "-c", "echo 'out' > /sys/class/gpio/gpio252/direction"};
+                        String[] directionCmd = {"sh", "-c", "echo 'out' > /sys/class/gpio/gpio508/direction"};
                         pr = rt.exec(directionCmd);
 
                         input = new BufferedReader(new InputStreamReader(pr.getErrorStream()));
@@ -96,7 +96,7 @@ public class Main {
                         pr.waitFor();
                         if (debug) System.out.println("Tried to init display out direction: " + pr.exitValue());
 
-                        String[] cmd = {"sh", "-c", "echo '1' > /sys/class/gpio/gpio252/value"};
+                        String[] cmd = {"sh", "-c", "echo '1' > /sys/class/gpio/gpio508/value"};
                         rt.exec(cmd);
 
                         String[] checkCmd = {"ls", "-l", "/sys/class/gpio"};
@@ -106,7 +106,7 @@ public class Main {
 
                         while ((line = input.readLine()) != null) {
                             //if (debug) System.out.println("Check: " + line);
-                            if (line.contains("gpio252")) {
+                            if (line.contains("gpio508")) {
                                 display = true;
                                 System.out.println("Display initialised!");
                                 break;
@@ -117,8 +117,8 @@ public class Main {
                             display = false;
                             System.out.println("WARNING: flag was set for display, but could not initialise it seems");
                         } else {
-                            rt.exec("sh -c \"echo 'out' > /sys/class/gpio/gpio252/direction\"");
-                            rt.exec("sh -c \"echo '1' > /sys/class/gpio/gpio252/value\"");
+                            rt.exec("sh -c \"echo 'out' > /sys/class/gpio/gpio508/direction\"");
+                            rt.exec("sh -c \"echo '1' > /sys/class/gpio/gpio508/value\"");
                         }
                     } catch (Exception e){
                         System.out.println("Error during display init: " + e.getLocalizedMessage());
