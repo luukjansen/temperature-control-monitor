@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pi4j.io.gpio.Pin;
 import com.pi4j.io.gpio.RaspiPin;
 import com.pi4j.system.SystemInfo;
-import com.sun.javafx.beans.annotations.NonNull;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -39,32 +38,27 @@ public class ServerConnection {
 
     private InetAddress address;
 
-    private boolean debug = false;
-    private boolean statusLed = true;
-
-    public ServerConnection(InetAddress address, boolean debug, boolean statusLed){
+    public ServerConnection(InetAddress address){
         this.address = address;
-        this.debug = debug;
-        this.statusLed = statusLed;
     }
 
     public void contactServer() throws Exception {
-        contactServer(null, null);
+        contactServer(new HashMap<>());
     }
 
-    public void contactServer(String actionPin, String actionValue) throws Exception {
-        GpioInterface gpio = GpioInterface.getInstance(debug);
+    public void contactServer(HashMap<String, Float> sensors) throws Exception {
+        GpioInterface gpio = GpioInterface.getInstance();
         try {
-            if(statusLed) gpio.switchOn(GpioInterface.STATUS_PIN);
+            if(Main.statusLed) gpio.switchOn(GpioInterface.STATUS_PIN);
             // Sent to server
 
             // Connect to HTTP
             RequestConfig config = RequestConfig.custom().setConnectTimeout(5000).build();
             CloseableHttpClient httpclient = HttpClientBuilder.create().setDefaultRequestConfig(config).build();
 
-            String data = getDataJsonString();
+            String data = getDataJsonString(sensors);
             //if (debug) System.out.println(data);
-            HttpGet httpget = new HttpGet("http://" + address.getHostAddress() + ":9000/api/sensorData?data=" + Base64.encodeBase64URLSafeString(encrypt("{" + data + "}").getBytes()));
+            HttpGet httpget = new HttpGet("http://" + address.getHostAddress() + Main.port + "/api/sensorData?data=" + Base64.encodeBase64URLSafeString(encrypt("{" + data + "}").getBytes()));
 
             // Create a custom response handler
             ResponseHandler<String> responseHandler = new ResponseHandler<String>() {
@@ -87,7 +81,7 @@ public class ServerConnection {
 
             String responseBody = httpclient.execute(httpget, responseHandler);
 
-            if (debug) System.out.println("Response: " + responseBody);
+            if (Main.debug) System.out.println("Response: " + responseBody);
 
             // general method, same as with data binding
             ObjectMapper listMapper = new ObjectMapper();
@@ -97,13 +91,18 @@ public class ServerConnection {
                 throw new Exception("Server returned: " + listRootNode.get("status").asText());
 
             for (JsonNode node : listRootNode.get("actions")) {
+                if (!node.has("action")) {
+                    System.out.println("Problem, there seems an action without the action element...");
+                    continue;
+                }
+
                 String action = node.get("action").asText();
                 if (action.equalsIgnoreCase("setLow") || action.equalsIgnoreCase("setHigh")) {
                     Pin pin = getPinFromNumber(node.get("pin").asInt());
 
                     if (!gpio.usedControlPins.contains(pin)) {
                         gpio.usedControlPins.add(pin);
-                        if (debug) System.out.println("Logging pin " + pin + " as used");
+                        if (Main.debug) System.out.println("Logging pin " + pin + " as used");
                     }
 
                     if (action.equalsIgnoreCase("setHigh")) {
@@ -115,16 +114,25 @@ public class ServerConnection {
                     } else {
                         throw new Exception("Unknown action: " + action);
                     }
+
+                } else if (action.equalsIgnoreCase("turnOnDisplay")) {
+                    Main.turnDisplayOn();
+                } else if (action.equalsIgnoreCase("turnOffDisplay")) {
+                    Main.turnDisplayOff();
+                } else if (action.equalsIgnoreCase("switchDisplay")) {
+                    Main.switchDisplay();
                 }
             }
-
             gpio.switchOff(GpioInterface.STATUS_PIN);
         } catch (IOException ioe) {
             gpio.turnAllActivePinsOff();
 
+            System.out.println("Problem with the connection: " + ioe.getMessage());
+            ioe.printStackTrace(System.out);
+
             // Try to get an IP request again. (maybe this should be selected more intelligent, could have all kinds of reasons)
             FindUDPServer udpFinder = new FindUDPServer();
-            address = udpFinder.searchForServer(debug);
+            address = udpFinder.searchForServer();
 
             if (address == null) {
                 System.out.println("Problem finding the server with unrecoverable error, please look at the log!");
@@ -144,7 +152,7 @@ public class ServerConnection {
         return getDataJsonString(new HashMap<String, Float>());
     }
 
-    private String getDataJsonString(@NonNull HashMap<String, Float> sensorList) throws Exception {
+    private String getDataJsonString(HashMap<String, Float> sensorList) throws Exception {
         File sensorDir = new File("/sys/bus/w1/devices/");
 
         if (sensorDir.exists()) {
@@ -155,7 +163,7 @@ public class ServerConnection {
                         String serial = file.getName().substring(3);
 
                         float temp = DS18b20.readTemp(sensorDir.getAbsolutePath() + "/28-" + serial + "/w1_slave");
-                        if (debug) System.out.println("Temp: " + temp + " for sensor " + serial);
+                        if (Main.debug) System.out.println("Temp: " + temp + " for sensor " + serial);
                         sensorList.put(serial, temp);
                     }
                 }

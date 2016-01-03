@@ -27,7 +27,7 @@ public class Main {
     // Flash on communication, can be disabled if annoying (but will flash on error)
     public static boolean statusLed = true;
     public static boolean debug = false;
-    public static boolean display = false;
+    public static Boolean displayOn = null;
     public static String port = "";
 
     public static InetAddress address = null;
@@ -71,6 +71,8 @@ public class Main {
             if (displayProp != null) {
                 if (displayProp.equalsIgnoreCase("1")) {
                     try {
+                        displayOn = false;
+
                         Runtime rt = Runtime.getRuntime();
                         String[] initCmd = {"/bin/sh", "-c", "echo 508 > /sys/class/gpio/export"};
                         Process pr = rt.exec(initCmd);
@@ -96,8 +98,9 @@ public class Main {
                         pr.waitFor();
                         if (debug) System.out.println("Tried to init display out direction: " + pr.exitValue());
 
-                        String[] cmd = {"sh", "-c", "echo '1' > /sys/class/gpio/gpio508/value"};
-                        rt.exec(cmd);
+                        turnDisplayOn();
+                        //String[] cmd = {"sh", "-c", "echo '1' > /sys/class/gpio/gpio508/value"};
+                        //rt.exec(cmd);
 
                         String[] checkCmd = {"ls", "-l", "/sys/class/gpio"};
                         pr = rt.exec(checkCmd);
@@ -107,14 +110,14 @@ public class Main {
                         while ((line = input.readLine()) != null) {
                             //if (debug) System.out.println("Check: " + line);
                             if (line.contains("gpio508")) {
-                                display = true;
+                                //displayOn = true;
                                 System.out.println("Display initialised!");
                                 break;
                             }
                         }
 
-                        if (!display) {
-                            display = false;
+                        if (displayOn == false) {
+                            displayOn = null;
                             System.out.println("WARNING: flag was set for display, but could not initialise it seems");
                         } else {
                             rt.exec("sh -c \"echo 'out' > /sys/class/gpio/gpio508/direction\"");
@@ -122,7 +125,7 @@ public class Main {
                         }
                     } catch (Exception e){
                         System.out.println("Error during display init: " + e.getLocalizedMessage());
-                        display = false;
+                        displayOn = null;
                     }
                 }
             }
@@ -149,6 +152,35 @@ public class Main {
             gpio.addButtonListener(RaspiPin.GPIO_04);
         } catch (Exception e) {
             System.out.println("Exception during main procedure and quiting: " + e.getLocalizedMessage());
+        }
+    }
+
+    static void turnDisplayOn() throws Exception {
+        if(debug) System.out.println("Going to turn on the display. Current: " + displayOn);
+        if(displayOn == null) return;
+
+        Runtime rt = Runtime.getRuntime();
+        String[] cmd = {"sh", "-c", "echo '1' > /sys/class/gpio/gpio508/value"};
+        rt.exec(cmd);
+        Main.displayOn = true;
+    }
+
+    static void turnDisplayOff() throws Exception {
+        if(debug) System.out.println("Going to turn off the display. Current: " + displayOn);
+        if(displayOn == null) return;
+
+        Runtime rt = Runtime.getRuntime();
+        String[] cmd = {"sh", "-c", "echo '0' > /sys/class/gpio/gpio508/value"};
+        rt.exec(cmd);
+        Main.displayOn = false;
+    }
+
+    static void switchDisplay() throws Exception {
+        if(displayOn == null) return;
+        if(displayOn) {
+            turnDisplayOff();
+        } else {
+            turnDisplayOn();
         }
     }
 
